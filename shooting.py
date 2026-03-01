@@ -15,10 +15,12 @@ BLACK = (0, 0, 0)
 BLUE = (0, 120, 255)
 RED = (220, 0, 0)
 YELLOW = (255, 200, 0)
+GREEN = (0, 200, 0)
+PURPLE = (150, 0, 200)
 
 # ================= FONTS =================
 font = pygame.font.SysFont(None, 36)
-big_font = pygame.font.SysFont(None, 72)
+big_font = pygame.font.SysFont(None, 64)
 
 # ================= PLAYER =================
 player = pygame.Rect(WIDTH // 2 - 25, HEIGHT - 70, 50, 50)
@@ -31,35 +33,50 @@ bullet_speed = 8   # 🔧 CHANGE BULLET SPEED HERE
 # ================= ENEMIES =================
 enemies = []
 enemy_speed = 2    # 🔧 CHANGE ENEMY SPEED HERE
-enemy_spawn_time = 40
+spawn_rate = 40
+
+# ================= BOSS =================
+boss = None
+boss_health = 0
+BOSS_MAX_HEALTH = 50    # 🔧 BOSS HEALTH
+boss_speed = 3
 
 # ================= GAME VARIABLES =================
 score = 0
 lives = 3
 game_over = False
+frame_count = 0
 
 # ================= FUNCTIONS =================
 def draw_text(text, font, color, x, y):
     t = font.render(text, True, color)
     screen.blit(t, (x - t.get_width() // 2, y))
 
+def reset_game():
+    global bullets, enemies, boss, boss_health
+    global score, lives, game_over, frame_count
+
+    bullets = []
+    enemies = []
+    boss = None
+    boss_health = 0
+    score = 0
+    lives = 3
+    game_over = False
+    frame_count = 0
+    player.centerx = WIDTH // 2
+
 def spawn_enemy():
     x = random.randint(0, WIDTH - 40)
     enemies.append(pygame.Rect(x, -40, 40, 40))
 
-def reset_game():
-    global bullets, enemies, score, lives, game_over
-    bullets = []
-    enemies = []
-    score = 0
-    lives = 3
-    game_over = False
-    player.x = WIDTH // 2 - 25
+def spawn_boss():
+    global boss, boss_health
+    boss = pygame.Rect(WIDTH // 2 - 80, 50, 160, 80)
+    boss_health = BOSS_MAX_HEALTH
 
 # ================= GAME LOOP =================
-running = True
-frame_count = 0
-
+running = True  
 while running:
     clock.tick(60)
     screen.fill(WHITE)
@@ -70,10 +87,9 @@ while running:
             running = False
 
         # SHOOT BULLET
-        if event.type == pygame.KEYDOWN and not game_over:
-            if event.key == pygame.K_SPACE:
+        if event.type == pygame.MOUSEBUTTONDOWN and not game_over:
                 bullets.append(
-                    pygame.Rect(player.centerx - 5, player.top, 10, 20)
+                    pygame.Rect(player.centerx - 4, player.top, 8, 16)
                 )
 
         # RESTART GAME
@@ -91,7 +107,7 @@ while running:
 
         # ================= SPAWN ENEMIES =================
         frame_count += 1
-        if frame_count % enemy_spawn_time == 0:
+        if frame_count % spawn_rate == 0 and boss is None:
             spawn_enemy()
 
         # ================= BULLET MOVEMENT =================
@@ -121,6 +137,29 @@ while running:
                     score += 1
                     break
 
+        # ================= SPAWN BOSS =================
+        if score >= 15 and boss is None:
+            spawn_boss()
+
+        # ================= BOSS MOVEMENT =================
+        if boss:
+            boss.x += boss_speed
+            if boss.left <= 0 or boss.right >= WIDTH:
+                boss_speed *= -1
+
+            if boss.colliderect(player):
+                lives = 0
+
+        # ================= BULLET vs BOSS =================
+        if boss:
+            for bullet in bullets[:]:
+                if bullet.colliderect(boss):
+                    bullets.remove(bullet)
+                    boss_health -= 1
+                    if boss_health <= 0:
+                        boss = None
+                        score += 10
+
         # ================= GAME OVER =================
         if lives <= 0:
             game_over = True
@@ -133,6 +172,15 @@ while running:
 
     for enemy in enemies:
         pygame.draw.rect(screen, RED, enemy)
+
+    if boss:
+        pygame.draw.rect(screen, PURPLE, boss)
+
+    # BOSS HEALTH BAR
+        bar_width = 200
+        health_width = int(bar_width * (boss_health / BOSS_MAX_HEALTH))
+        pygame.draw.rect(screen, RED, (WIDTH//2 - 100, 10, bar_width, 15))
+        pygame.draw.rect(screen, GREEN, (WIDTH//2 - 100, 10, health_width, 15))
 
     screen.blit(font.render(f"Score: {score}", True, BLACK), (10, 10))
     screen.blit(font.render(f"Lives: {lives}", True, BLACK), (10, 40))

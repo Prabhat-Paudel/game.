@@ -17,6 +17,7 @@ RED = (220, 0, 0)
 YELLOW = (255, 200, 0)
 GREEN = (0, 200, 0)
 PURPLE = (150, 0, 200)
+ORANGE = (255, 140, 0)
 
 # ================= FONTS =================
 font = pygame.font.SysFont(None, 36)
@@ -41,6 +42,15 @@ boss_health = 0
 BOSS_MAX_HEALTH = 50    # 🔧 BOSS HEALTH
 boss_speed = 3
 
+# ================= POWER UPS =================
+powerups = []
+powerup_spawn_rate = 600   # 🔧 CHANGE: lower = more powerups
+
+speed_active = False
+triple_active = False
+speed_end_time = 0
+triple_end_time = 0
+
 # ================= GAME VARIABLES =================
 score = 0
 lives = 3
@@ -51,19 +61,23 @@ frame_count = 0
 def draw_text(text, font, color, x, y):
     t = font.render(text, True, color)
     screen.blit(t, (x - t.get_width() // 2, y))
-
+    
 def reset_game():
     global bullets, enemies, boss, boss_health
     global score, lives, game_over, frame_count
+    global speed_active, triple_active
 
     bullets = []
     enemies = []
+    powerups = []
     boss = None
     boss_health = 0
     score = 0
     lives = 3
     game_over = False
     frame_count = 0
+    speed_active = False
+    triple_active = False
     player.centerx = WIDTH // 2
 
 def spawn_enemy():
@@ -74,6 +88,15 @@ def spawn_boss():
     global boss, boss_health
     boss = pygame.Rect(WIDTH // 2 - 80, 50, 160, 80)
     boss_health = BOSS_MAX_HEALTH
+
+def spawn_powerup():
+    kind = random.choice(["speed", "triple"])
+    rect = pygame.Rect(
+        random.randint(50, WIDTH - 50),
+        random.randint(100, HEIGHT - 200),
+        30, 30
+    )
+    powerups.append({"type": kind, "rect": rect})
 
 # ================= GAME LOOP =================
 running = True  
@@ -88,9 +111,12 @@ while running:
 
         # SHOOT BULLET
         if event.type == pygame.MOUSEBUTTONDOWN and not game_over:
-                bullets.append(
-                    pygame.Rect(player.centerx - 4, player.top, 8, 16)
-                )
+            if triple_active:
+                bullets.append(pygame.Rect(player.centerx - 15, player.top, 8, 16))
+                bullets.append(pygame.Rect(player.centerx - 4, player.top, 8, 16))
+                bullets.append(pygame.Rect(player.centerx + 7, player.top, 8, 16))
+            else:
+                bullets.append(pygame.Rect(player.centerx - 4, player.top, 8, 16))
 
         # RESTART GAME
         if event.type == pygame.KEYDOWN and game_over:
@@ -182,8 +208,17 @@ while running:
         pygame.draw.rect(screen, RED, (WIDTH//2 - 100, 10, bar_width, 15))
         pygame.draw.rect(screen, GREEN, (WIDTH//2 - 100, 10, health_width, 15))
 
+    for p in powerups:
+        color = ORANGE if p["type"] == "speed" else GREEN
+        pygame.draw.rect(screen, color, p["rect"])
+
     screen.blit(font.render(f"Score: {score}", True, BLACK), (10, 10))
     screen.blit(font.render(f"Lives: {lives}", True, BLACK), (10, 40))
+
+    if speed_active:
+        screen.blit(font.render("SPEED BOOST!", True, ORANGE), (10, 70))
+    if triple_active:
+        screen.blit(font.render("TRIPLE SHOT!", True, GREEN), (10, 100))
 
     if game_over:
         draw_text("GAME OVER", big_font, RED, WIDTH // 2, HEIGHT // 2 - 40)

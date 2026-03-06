@@ -6,90 +6,105 @@ pygame.init()
 # ================= SCREEN =================
 WIDTH, HEIGHT = 800, 600
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
-pygame.display.set_caption("2D Racing Game")
+pygame.display.set_caption("Lane Racing Game")
+
 clock = pygame.time.Clock()
 
 # ================= COLORS =================
-WHITE = (255, 255, 255)
-GRAY = (60, 60, 60)
-YELLOW = (255, 200, 0)
-RED = (220, 0, 0)
-BLUE = (0, 120, 255)
-BLACK = (0, 0, 0)
+WHITE = (255,255,255)
+GRAY = (60,60,60)
+GREEN = (0,150,0)
+RED = (220,0,0)
+BLUE = (0,120,255)
+YELLOW = (255,200,0)
 
 # ================= FONTS =================
-font = pygame.font.SysFont(None, 36)
-big_font = pygame.font.SysFont(None, 72)
+font = pygame.font.SysFont(None,36)
+big_font = pygame.font.SysFont(None,72)
 
 # ================= ROAD =================
-road_width = 400
-road_x = WIDTH // 2 - road_width // 2
+road_width = 420
+road_x = WIDTH//2 - road_width//2
 
-# ================= PLAYER CAR =================
-player = pygame.Rect(road_x + road_width // 2 - 25, HEIGHT - 100, 50, 80)
-player_speed = 6   # 🔧 CHANGE PLAYER SPEED HERE
+# ================= LANES =================
+LANES = 3                     # 🔧 CHANGE NUMBER OF LANES HERE
+lane_width = road_width // LANES
 
-# ================= ENEMY CARS =================
+lane_positions = []
+for i in range(LANES):
+    lane_positions.append(road_x + i*lane_width + lane_width//2 - 25)
+
+# ================= PLAYER =================
+lane_index = 1
+player = pygame.Rect(lane_positions[lane_index], HEIGHT-120, 50, 80)
+
+# ================= ENEMIES =================
 enemies = []
-enemy_speed = 4    # 🔧 BASE ENEMY SPEED
-spawn_rate = 60    # 🔧 LOWER = MORE CARS
+enemy_speed = 5
 
 # ================= GAME VARIABLES =================
 score = 0
 game_over = False
-frame_count = 0
-road_offset = 0
+spawn_timer = 0
 
 # ================= FUNCTIONS =================
 def spawn_enemy():
-    x = random.randint(road_x + 20, road_x + road_width - 60)
-    enemies.append(pygame.Rect(x, -100, 50, 80))
+    lane = random.randint(0, LANES-1)
+    enemies.append(pygame.Rect(lane_positions[lane], -100, 50, 80))
 
 def reset_game():
-    global enemies, score, game_over, frame_count, enemy_speed
+    global enemies, score, game_over, enemy_speed, lane_index
     enemies = []
     score = 0
+    enemy_speed = 5
+    lane_index = 1
+    player.x = lane_positions[lane_index]
     game_over = False
-    frame_count = 0
-    enemy_speed = 4
-    player.centerx = road_x + road_width // 2
 
 # ================= GAME LOOP =================
 running = True
 while running:
+
     clock.tick(60)
-    screen.fill(GREEN := (0, 150, 0))
+    screen.fill(GREEN)
 
     # ================= EVENTS =================
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
-            running = False
+            running=False
 
-        if event.type == pygame.KEYDOWN and game_over:
-            if event.key == pygame.K_RETURN:
-                reset_game()
+        if event.type == pygame.KEYDOWN:
+
+            if not game_over:
+
+                if event.key == pygame.K_LEFT:
+                    lane_index -= 1
+                    if lane_index < 0:
+                        lane_index = 0
+                    player.x = lane_positions[lane_index]
+
+                if event.key == pygame.K_RIGHT:
+                    lane_index += 1
+                    if lane_index > LANES-1:
+                        lane_index = LANES-1
+                    player.x = lane_positions[lane_index]
+
+            else:
+                if event.key == pygame.K_RETURN:
+                    reset_game()
 
     if not game_over:
-        # ================= PLAYER CONTROL =================
-        keys = pygame.key.get_pressed()
-        if keys[pygame.K_LEFT] and player.left > road_x:
-            player.x -= player_speed
-        if keys[pygame.K_RIGHT] and player.right < road_x + road_width:
-            player.x += player_speed
 
-        # ================= ROAD MOVEMENT =================
-        road_offset += enemy_speed
-        if road_offset >= 40:
-            road_offset = 0
-
-        # ================= SPAWN ENEMY =================
-        frame_count += 1
-        if frame_count % spawn_rate == 0:
+        # Spawn enemies
+        spawn_timer += 1
+        if spawn_timer > 60:
             spawn_enemy()
+            spawn_timer = 0
 
-        # ================= MOVE ENEMIES =================
+        # Move enemies
         for enemy in enemies[:]:
             enemy.y += enemy_speed
+
             if enemy.top > HEIGHT:
                 enemies.remove(enemy)
                 score += 1
@@ -97,36 +112,37 @@ while running:
             if enemy.colliderect(player):
                 game_over = True
 
-        # ================= SPEED INCREASE =================
-        if score % 5 == 0 and score != 0:
-            enemy_speed = 4 + score // 5
+        # Increase difficulty
+        if score % 10 == 0 and score != 0:
+            enemy_speed = 5 + score//10
 
-    # ================= DRAW =================
-    # Grass
-    pygame.draw.rect(screen, GREEN, (0, 0, WIDTH, HEIGHT))
+    # ================= DRAW ROAD =================
+    pygame.draw.rect(screen,GRAY,(road_x,0,road_width,HEIGHT))
 
-    # Road
-    pygame.draw.rect(screen, GRAY, (road_x, 0, road_width, HEIGHT))
+    # Lane lines
+    for i in range(1,LANES):
+        pygame.draw.line(
+            screen,
+            WHITE,
+            (road_x+i*lane_width,0),
+            (road_x+i*lane_width,HEIGHT),
+            5
+        )
 
-    # Road lines
-    for y in range(-40, HEIGHT, 80):
-        pygame.draw.rect(screen, YELLOW, (WIDTH//2 - 5, y + road_offset, 10, 40))
+    # Player
+    pygame.draw.rect(screen,BLUE,player)
 
-    # Player car
-    pygame.draw.rect(screen, BLUE, player)
-
-    # Enemy cars
+    # Enemies
     for enemy in enemies:
-        pygame.draw.rect(screen, RED, enemy)
+        pygame.draw.rect(screen,RED,enemy)
 
-    # HUD
-    screen.blit(font.render(f"Score: {score}", True, WHITE), (10, 10))
+    # Score
+    screen.blit(font.render(f"Score: {score}",True,WHITE),(10,10))
 
+    # Game Over
     if game_over:
-        text = big_font.render("GAME OVER", True, RED)
-        screen.blit(text, (WIDTH//2 - 180, HEIGHT//2 - 50))
-        screen.blit(font.render("Press ENTER to Restart", True, WHITE),
-                    (WIDTH//2 - 160, HEIGHT//2 + 20))
+        screen.blit(big_font.render("GAME OVER",True,RED),(260,250))
+        screen.blit(font.render("Press ENTER to restart",True,WHITE),(280,320))
 
     pygame.display.update()
 

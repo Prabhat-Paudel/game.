@@ -1,84 +1,117 @@
 import tkinter as tk
 import random
+import time
 
-# Goal state
-goal = [1,2,3,4,5,6,7,8,0]
+SIZE = 4
+GOAL = list(range(1, SIZE*SIZE)) + [0]
 
-# Create shuffled puzzle
-def create_board():
-    nums = list(range(9))
-    while True:
-        random.shuffle(nums)
-        if is_solvable(nums):
-            return nums
-
-# Check if puzzle is solvable
+# -------- Puzzle Logic --------
 def is_solvable(board):
     inv = 0
     for i in range(len(board)):
         for j in range(i+1, len(board)):
             if board[i] and board[j] and board[i] > board[j]:
                 inv += 1
-    return inv % 2 == 0
+    row = board.index(0) // SIZE
+    return (inv + row) % 2 == 1
 
-# Find empty tile
-def find_zero():
-    return board.index(0)
+def shuffle_board(moves=100):
+    board = GOAL[:]
+    zero = SIZE*SIZE - 1
 
-# Swap tiles
-def swap(i, j):
-    board[i], board[j] = board[j], board[i]
+    for _ in range(moves):
+        neighbors = get_neighbors(zero)
+        swap = random.choice(neighbors)
+        board[zero], board[swap] = board[swap], board[zero]
+        zero = swap
 
-# Button click handler
-def click(i):
-    zero = find_zero()
+    return board
 
-    # valid moves
-    moves = {
-        zero-1, zero+1,
-        zero-3, zero+3
-    }
+def get_neighbors(i):
+    neighbors = []
+    r, c = divmod(i, SIZE)
 
-    # prevent wrapping
-    if zero % 3 == 0:
-        moves.discard(zero-1)
-    if zero % 3 == 2:
-        moves.discard(zero+1)
+    if r > 0: neighbors.append(i - SIZE)
+    if r < SIZE-1: neighbors.append(i + SIZE)
+    if c > 0: neighbors.append(i - 1)
+    if c < SIZE-1: neighbors.append(i + 1)
 
-    if i in moves:
-        swap(i, zero)
-        update_buttons()
+    return neighbors
 
-        if board == goal:
-            status.config(text="🎉 You solved it!")
+# -------- Game Class --------
+class PuzzleGame:
+    def __init__(self, root):
+        self.root = root
+        self.root.title("🧩 15 Puzzle Game")
 
-# Update UI
-def update_buttons():
-    for i in range(9):
-        if board[i] == 0:
-            buttons[i].config(text="", bg="lightgray")
-        else:
-            buttons[i].config(text=str(board[i]), bg="white")
+        self.board = []
+        self.buttons = []
+        self.moves = 0
+        self.start_time = 0
 
-# Create window
+        self.level = tk.StringVar(value="Medium")
+
+        self.create_ui()
+        self.start_game()
+
+    def create_ui(self):
+        top_frame = tk.Frame(self.root)
+        top_frame.pack()
+
+        tk.Label(top_frame, text="Level:").pack(side="left")
+        tk.OptionMenu(top_frame, self.level, "Easy", "Medium", "Hard").pack(side="left")
+
+        tk.Button(top_frame, text="Restart", command=self.start_game).pack(side="left")
+
+        self.info = tk.Label(self.root, text="")
+        self.info.pack()
+
+        grid_frame = tk.Frame(self.root)
+        grid_frame.pack()
+
+        for i in range(SIZE*SIZE):
+            btn = tk.Button(grid_frame, font=("Arial", 18),
+                            width=4, height=2,
+                            command=lambda i=i: self.click(i))
+            btn.grid(row=i//SIZE, column=i%SIZE)
+            self.buttons.append(btn)
+
+    def start_game(self):
+        difficulty = self.level.get()
+        shuffle_moves = {"Easy": 30, "Medium": 80, "Hard": 150}[difficulty]
+
+        self.board = shuffle_board(shuffle_moves)
+        self.moves = 0
+        self.start_time = time.time()
+
+        self.update_ui()
+        self.update_timer()
+
+    def click(self, i):
+        zero = self.board.index(0)
+        if i in get_neighbors(zero):
+            self.board[i], self.board[zero] = self.board[zero], self.board[i]
+            self.moves += 1
+            self.update_ui()
+
+            if self.board == GOAL:
+                elapsed = int(time.time() - self.start_time)
+                self.info.config(text=f"🎉 Solved in {self.moves} moves, {elapsed}s!")
+
+    def update_ui(self):
+        for i in range(SIZE*SIZE):
+            val = self.board[i]
+            if val == 0:
+                self.buttons[i].config(text="", bg="lightgray")
+            else:
+                self.buttons[i].config(text=str(val), bg="white")
+
+    def update_timer(self):
+        elapsed = int(time.time() - self.start_time)
+        self.info.config(text=f"Moves: {self.moves} | Time: {elapsed}s")
+        self.root.after(1000, self.update_timer)
+
+# -------- Run Game --------
 root = tk.Tk()
-root.title("🧩 Puzzle Game")
-
-board = create_board()
-buttons = []
-
-# Create grid buttons
-for i in range(9):
-    btn = tk.Button(root, text="", font=("Arial", 20),
-                    width=5, height=2,
-                    command=lambda i=i: click(i))
-    btn.grid(row=i//3, column=i%3)
-    buttons.append(btn)
-
-# Status label
-status = tk.Label(root, text="Arrange numbers 1–8", font=("Arial", 12))
-status.grid(row=3, column=0, columnspan=3)
-
-update_buttons()
-
+game = PuzzleGame(root)
 root.mainloop()

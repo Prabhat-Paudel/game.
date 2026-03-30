@@ -1,5 +1,6 @@
 import tkinter as tk
 import random
+import os
 
 WIDTH = 400
 HEIGHT = 600
@@ -15,12 +16,25 @@ class FlappyBall:
         self.root.bind("<space>", self.fly)
         self.root.bind("<r>", self.restart)
 
+        self.high_score = self.load_high_score()
+
         self.init_game()
+
+    def load_high_score(self):
+        if os.path.exists("highscore.txt"):
+            with open("highscore.txt", "r") as f:
+                return int(f.read())
+        return 0
+
+    def save_high_score(self):
+        with open("highscore.txt", "w") as f:
+            f.write(str(self.high_score))
 
     def init_game(self):
         self.canvas.delete("all")
 
-        self.ball = self.canvas.create_oval(170, 250, 230, 310, fill="yellow", outline="orange", width=2)
+        self.ball = self.canvas.create_oval(170, 250, 230, 310,
+                                            fill="yellow", outline="orange", width=2)
 
         self.velocity = 0
         self.gravity = 0.6
@@ -28,6 +42,7 @@ class FlappyBall:
 
         self.pipes = []
         self.score = 0
+        self.level = 1
         self.speed = 5
         self.game_over = False
 
@@ -41,7 +56,7 @@ class FlappyBall:
         self.init_game()
 
     def create_pipe(self):
-        gap = max(120, 180 - self.score // 50)  # difficulty increases
+        gap = max(100, 180 - self.level * 10)  # harder each level
         top_height = random.randint(50, 300)
 
         top = self.canvas.create_rectangle(350, 0, 400, top_height, fill="#228B22")
@@ -55,7 +70,7 @@ class FlappyBall:
             self.canvas.move(top, -self.speed, 0)
             self.canvas.move(bottom, -self.speed, 0)
 
-            if self.canvas.coords(top)[2] > 0:  # still visible
+            if self.canvas.coords(top)[2] > 0:
                 new_pipes.append((top, bottom))
             else:
                 self.canvas.delete(top)
@@ -93,19 +108,37 @@ class FlappyBall:
 
         if self.check_collision():
             self.game_over = True
-            self.canvas.create_text(200, 250, text="GAME OVER", font=("Arial", 26, "bold"), fill="red")
-            self.canvas.create_text(200, 300, text="Press R to Restart", font=("Arial", 14), fill="white")
+
+            # Update high score
+            if self.score > self.high_score:
+                self.high_score = self.score
+                self.save_high_score()
+
+            self.canvas.create_text(200, 240, text="GAME OVER",
+                                    font=("Arial", 26, "bold"), fill="red")
+            self.canvas.create_text(200, 280, text=f"Score: {self.score}",
+                                    font=("Arial", 16), fill="white")
+            self.canvas.create_text(200, 310, text=f"High Score: {self.high_score}",
+                                    font=("Arial", 16), fill="yellow")
+            self.canvas.create_text(200, 350, text="Press R to Restart",
+                                    font=("Arial", 14), fill="white")
             return
 
         self.score += 1
 
-        # Increase speed gradually
+        # Level system
         if self.score % 200 == 0:
-            self.speed += 0.5
+            self.level += 1
+            self.speed += 1
 
-        self.canvas.delete("score")
+        # UI display
+        self.canvas.delete("ui")
         self.canvas.create_text(60, 30, text=f"Score: {self.score}",
-                                fill="white", font=("Arial", 16, "bold"), tag="score")
+                                fill="white", font=("Arial", 14, "bold"), tag="ui")
+        self.canvas.create_text(300, 30, text=f"Level: {self.level}",
+                                fill="white", font=("Arial", 14, "bold"), tag="ui")
+        self.canvas.create_text(200, 60, text=f"High: {self.high_score}",
+                                fill="yellow", font=("Arial", 12), tag="ui")
 
         self.root.after(30, self.update)
 

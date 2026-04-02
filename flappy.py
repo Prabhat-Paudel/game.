@@ -22,7 +22,7 @@ class FlappyBall:
 
         self.init_game()
 
-    # ---------------- HIGH SCORE ----------------
+    # -------- HIGH SCORE --------
     def load_highscore(self):
         if os.path.exists("highscore.txt"):
             with open("highscore.txt", "r") as f:
@@ -33,7 +33,7 @@ class FlappyBall:
         with open("highscore.txt", "w") as f:
             f.write(str(self.highscore))
 
-    # ---------------- INIT ----------------
+    # -------- INIT --------
     def init_game(self):
         self.canvas.delete("all")
 
@@ -52,15 +52,12 @@ class FlappyBall:
         self.level = 1
         self.speed = 5
 
-        self.shield = False
-        self.shield_time = 0
-
         self.paused = False
         self.game_over = False
 
         self.update()
 
-    # ---------------- CONTROLS ----------------
+    # -------- CONTROLS --------
     def fly(self, event):
         if not self.game_over and not self.paused:
             self.velocity = self.jump
@@ -71,13 +68,15 @@ class FlappyBall:
     def toggle_pause(self, event):
         self.paused = not self.paused
 
-    # ---------------- PIPES ----------------
+    # -------- PIPES --------
     def create_pipe(self):
-        gap = max(100, 180 - self.level * 10)
+        # Bigger gap for fun gameplay
+        gap = max(180, 260 - self.level * 5)
         top_height = random.randint(50, 300)
 
-        top = self.canvas.create_rectangle(350, 0, 400, top_height, fill="#228B22")
-        bottom = self.canvas.create_rectangle(350, top_height + gap, 400, HEIGHT, fill="#228B22")
+        # Spawn slightly farther right
+        top = self.canvas.create_rectangle(420, 0, 470, top_height, fill="#228B22")
+        bottom = self.canvas.create_rectangle(420, top_height + gap, 470, HEIGHT, fill="#228B22")
 
         self.pipes.append((top, bottom))
 
@@ -95,10 +94,10 @@ class FlappyBall:
 
         self.pipes = new_pipes
 
-    # ---------------- COINS ----------------
+    # -------- COINS --------
     def create_coin(self):
         y = random.randint(100, HEIGHT - 100)
-        coin = self.canvas.create_oval(350, y, 370, y + 20, fill="gold")
+        coin = self.canvas.create_oval(420, y, 440, y + 20, fill="gold")
         self.coins.append(coin)
 
     def move_coins(self):
@@ -124,12 +123,7 @@ class FlappyBall:
 
         self.coins = new_coins
 
-    # ---------------- POWER-UP ----------------
-    def activate_shield(self):
-        self.shield = True
-        self.shield_time = 200
-
-    # ---------------- COLLISION ----------------
+    # -------- COLLISION --------
     def overlap(self, a, b):
         return (a[0] < b[2] and a[2] > b[0] and
                 a[1] < b[3] and a[3] > b[1])
@@ -137,16 +131,18 @@ class FlappyBall:
     def check_collision(self):
         ball_pos = self.canvas.coords(self.ball)
 
+        # Top or ground
         if ball_pos[1] <= 0 or ball_pos[3] >= HEIGHT:
             return True
 
+        # Pipes
         for top, bottom in self.pipes:
             if self.overlap(ball_pos, self.canvas.coords(top)) or \
                self.overlap(ball_pos, self.canvas.coords(bottom)):
                 return True
         return False
 
-    # ---------------- UPDATE LOOP ----------------
+    # -------- UPDATE LOOP --------
     def update(self):
         if self.game_over:
             return
@@ -164,23 +160,16 @@ class FlappyBall:
         self.move_coins()
         self.check_coin_collision()
 
-        if random.randint(1, 25) == 1:
+        # Spawn pipes (less frequent)
+        if random.randint(1, 35) == 1:
             self.create_pipe()
 
+        # Spawn coins
         if random.randint(1, 40) == 1:
             self.create_coin()
 
-        if random.randint(1, 200) == 1:
-            self.activate_shield()
-
-        # Shield timer
-        if self.shield:
-            self.shield_time -= 1
-            if self.shield_time <= 0:
-                self.shield = False
-
-        # Collision
-        if self.check_collision() and not self.shield:
+        # 💀 Always die on collision (no shield)
+        if self.check_collision():
             self.game_over = True
 
             if self.score > self.highscore:
@@ -220,14 +209,10 @@ class FlappyBall:
         self.canvas.create_text(200, 90, text=f"Coins: {self.coin_score}",
                                 fill="gold", font=("Arial", 12), tag="ui")
 
-        if self.shield:
-            self.canvas.create_text(200, 120, text="SHIELD ACTIVE",
-                                    fill="cyan", font=("Arial", 12, "bold"), tag="ui")
-
         self.root.after(30, self.update)
 
 
-# RUN GAME
+# -------- RUN GAME --------
 root = tk.Tk()
 game = FlappyBall(root)
 root.mainloop()

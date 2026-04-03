@@ -37,7 +37,8 @@ class FlappyBall:
     def init_game(self):
         self.canvas.delete("all")
 
-        self.ball = self.canvas.create_oval(170, 250, 230, 310,
+        # 🟡 Smaller Ball
+        self.ball = self.canvas.create_oval(180, 260, 220, 300,
                                             fill="yellow", outline="orange", width=2)
 
         self.velocity = 0
@@ -70,13 +71,13 @@ class FlappyBall:
 
     # -------- PIPES --------
     def create_pipe(self):
-        # Bigger gap for fun gameplay
-        gap = max(180, 260 - self.level * 5)
+        # 🟢 Bigger gap for easy gameplay
+        gap = max(220, 300 - self.level * 5)
         top_height = random.randint(50, 300)
 
-        # Spawn slightly farther right
-        top = self.canvas.create_rectangle(420, 0, 470, top_height, fill="#228B22")
-        bottom = self.canvas.create_rectangle(420, top_height + gap, 470, HEIGHT, fill="#228B22")
+        # 🟢 Spawn farther right
+        top = self.canvas.create_rectangle(450, 0, 500, top_height, fill="#228B22")
+        bottom = self.canvas.create_rectangle(450, top_height + gap, 500, HEIGHT, fill="#228B22")
 
         self.pipes.append((top, bottom))
 
@@ -97,7 +98,7 @@ class FlappyBall:
     # -------- COINS --------
     def create_coin(self):
         y = random.randint(100, HEIGHT - 100)
-        coin = self.canvas.create_oval(420, y, 440, y + 20, fill="gold")
+        coin = self.canvas.create_oval(450, y, 470, y + 20, fill="gold")
         self.coins.append(coin)
 
     def move_coins(self):
@@ -131,11 +132,9 @@ class FlappyBall:
     def check_collision(self):
         ball_pos = self.canvas.coords(self.ball)
 
-        # Top or ground
         if ball_pos[1] <= 0 or ball_pos[3] >= HEIGHT:
             return True
 
-        # Pipes
         for top, bottom in self.pipes:
             if self.overlap(ball_pos, self.canvas.coords(top)) or \
                self.overlap(ball_pos, self.canvas.coords(bottom)):
@@ -160,15 +159,15 @@ class FlappyBall:
         self.move_coins()
         self.check_coin_collision()
 
-        # Spawn pipes (less frequent)
-        if random.randint(1, 35) == 1:
+        # 🟢 Pipes spawn less frequently (more space)
+        if random.randint(1, 55) == 1:
             self.create_pipe()
 
-        # Spawn coins
-        if random.randint(1, 40) == 1:
+        # Coins
+        if random.randint(1, 45) == 1:
             self.create_coin()
 
-        # 💀 Always die on collision (no shield)
+        # 💀 Always die on pipe touch
         if self.check_collision():
             self.game_over = True
 

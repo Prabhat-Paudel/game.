@@ -1,20 +1,21 @@
 import pygame
 import sys
 import random
+import math
+import os
 
 pygame.init()
 
 # Screen
 WIDTH, HEIGHT = 600, 600
-CELL_SIZE = 30
-ROWS = HEIGHT // CELL_SIZE
-COLS = WIDTH // CELL_SIZE
+CELL = 30
+ROWS, COLS = HEIGHT // CELL, WIDTH // CELL
 
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
-pygame.display.set_caption("Shadow Escape")
+pygame.display.set_caption("Shadow Escape PRO")
 
 clock = pygame.time.Clock()
-font = pygame.font.SysFont(None, 40)
+font = pygame.font.SysFont(None, 32)
 
 # Colors
 BLACK = (10, 10, 10)
@@ -24,211 +25,194 @@ RED = (255, 80, 80)
 GREEN = (80, 255, 120)
 GRAY = (60, 60, 60)
 YELLOW = (200, 200, 50)
+PURPLE = (180, 80, 255)
 
-# Game States
-MENU = 0
-PLAYING = 1
-GAME_OVER = 2
-WIN = 3
+# States
+MENU, PLAYING, GAME_OVER, WIN, PAUSE = 0,1,2,3,4
+state = MENU
 
-game_state = MENU
 level = 1
 max_level = 5
+lives = 3
+score = 0
 
-# -------- LEVEL GENERATION --------
+# ---------- HIGH SCORE ----------
+highscore = 0
+if os.path.exists("highscore.txt"):
+    with open("highscore.txt", "r") as f:
+        highscore = int(f.read())
+
+def save_highscore():
+    global highscore
+    if score > highscore:
+        with open("highscore.txt", "w") as f:
+            f.write(str(score))
+
+# ---------- LEVEL ----------
 def generate_level(level):
-    maze = [[0 for _ in range(COLS)] for _ in range(ROWS)]
-
-    wall_density = 0.15 + (level * 0.05)
+    maze = [[0]*COLS for _ in range(ROWS)]
 
     for i in range(ROWS):
         for j in range(COLS):
-            if random.random() < wall_density:
+            if random.random() < 0.2 + level*0.05:
                 maze[i][j] = 1
 
-    # Ensure at least some open space
-    for _ in range(100):
-        x = random.randint(1, ROWS - 2)
-        y = random.randint(1, COLS - 2)
-        maze[x][y] = 0
+    portals = []
+    for _ in range(2):
+        portals.append([random.randint(1,ROWS-2), random.randint(1,COLS-2)])
 
-    # Light zones decrease per level
-    light_zones = []
-    for _ in range(max(1, 6 - level)):
-        while True:
-            x = random.randint(1, ROWS - 2)
-            y = random.randint(1, COLS - 2)
-            if maze[x][y] == 0:
-                light_zones.append([x, y])
-                break
+    return maze, portals
 
-    return maze, light_zones
-
-# -------- HELPERS --------
-def get_random_empty_cell():
+def random_cell():
     while True:
-        x = random.randint(1, ROWS - 2)
-        y = random.randint(1, COLS - 2)
+        x,y = random.randint(1,ROWS-2), random.randint(1,COLS-2)
         if maze[x][y] == 0:
-            return [x, y]
+            return [x,y]
 
-def distance(a, b):
-    return abs(a[0] - b[0]) + abs(a[1] - b[1])
+def reset():
+    global player, shadow, goal, maze, portals, energy, dash_cd
 
-# -------- RESET LEVEL --------
-def reset_level(level):
-    global player_pos, shadow_pos, player_path, energy
-    global maze, light_zones, goal, shadow_delay
+    maze, portals = generate_level(level)
 
-    maze, light_zones = generate_level(level)
-
-    # Player spawn
-    player_pos = get_random_empty_cell()
-
-    # Shadow spawn far away
-    while True:
-        shadow_pos = get_random_empty_cell()
-        if distance(player_pos, shadow_pos) > 8:
-            break
-
-    player_path = []
+    player = random_cell()
+    shadow = random_cell()
+    goal = random_cell()
 
     energy = 100
+    dash_cd = 0
 
-    # Goal spawn far from player
-    while True:
-        goal = get_random_empty_cell()
-        if distance(player_pos, goal) > 10:
-            break
+reset()
 
-    # Faster shadow each level
-    shadow_delay = max(5, 20 - level * 2)
+# ---------- AI ----------
+def move_shadow():
+    dx = player[0] - shadow[0]
+    dy = player[1] - shadow[1]
 
-reset_level(level)
+    if abs(dx) > abs(dy):
+        step = (1 if dx>0 else -1, 0)
+    else:
+        step = (0, 1 if dy>0 else -1)
 
-# -------- DRAW TEXT --------
-def draw_text(text, x, y):
-    img = font.render(text, True, WHITE)
-    screen.blit(img, (x, y))
+    nx = shadow[0] + step[0]
+    ny = shadow[1] + step[1]
 
-# -------- MOVEMENT --------
-def move(dx, dy):
+    if 0 <= nx < ROWS and 0 <= ny < COLS and maze[nx][ny]==0:
+        shadow[0], shadow[1] = nx, ny
+
+# ---------- DRAW ----------
+def draw_text(t,x,y):
+    screen.blit(font.render(t,True,WHITE),(x,y))
+
+# ---------- MOVE ----------
+def move(dx,dy):
     global energy
-    new_x = player_pos[0] + dx
-    new_y = player_pos[1] + dy
+    nx, ny = player[0]+dx, player[1]+dy
+    if 0<=nx<ROWS and 0<=ny<COLS and maze[nx][ny]==0 and energy>0:
+        player[0], player[1] = nx, ny
+        energy -= 1
 
-    if 0 <= new_x < ROWS and 0 <= new_y < COLS:
-        if maze[new_x][new_y] == 0 and energy > 0:
-            player_pos[0] = new_x
-            player_pos[1] = new_y
-            energy -= 1
-
-# -------- MAIN LOOP --------
-running = True
-
+# ---------- GAME LOOP ----------
+running=True
 while running:
     clock.tick(10)
     screen.fill(BLACK)
 
-    for event in pygame.event.get():
-        if event.type == pygame.QUIT:
-            running = False
+    for e in pygame.event.get():
+        if e.type==pygame.QUIT:
+            running=False
 
-        if game_state == MENU:
-            if event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_RETURN:
-                    level = 1
-                    reset_level(level)
-                    game_state = PLAYING
+        if state==MENU and e.type==pygame.KEYDOWN:
+            if e.key==pygame.K_RETURN:
+                level, lives, score = 1,3,0
+                reset()
+                state=PLAYING
 
-        elif game_state in [GAME_OVER, WIN]:
-            if event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_RETURN:
-                    game_state = MENU
+        elif state in [GAME_OVER, WIN] and e.type==pygame.KEYDOWN:
+            if e.key==pygame.K_RETURN:
+                state=MENU
 
-    keys = pygame.key.get_pressed()
+        elif state==PLAYING and e.type==pygame.KEYDOWN:
+            if e.key==pygame.K_p:
+                state=PAUSE
+            if e.key==pygame.K_SPACE and dash_cd==0:
+                player[0]+=random.choice([-2,2])
+                player[1]+=random.choice([-2,2])
+                dash_cd=5
 
-    # -------- GAMEPLAY --------
-    if game_state == PLAYING:
+        elif state==PAUSE and e.type==pygame.KEYDOWN:
+            if e.key==pygame.K_p:
+                state=PLAYING
 
-        if keys[pygame.K_UP]:
-            move(-1, 0)
-        if keys[pygame.K_DOWN]:
-            move(1, 0)
-        if keys[pygame.K_LEFT]:
-            move(0, -1)
-        if keys[pygame.K_RIGHT]:
-            move(0, 1)
+    keys=pygame.key.get_pressed()
 
-        # Record path
-        player_path.append(tuple(player_pos))
+    if state==PLAYING:
+        if keys[pygame.K_UP]: move(-1,0)
+        if keys[pygame.K_DOWN]: move(1,0)
+        if keys[pygame.K_LEFT]: move(0,-1)
+        if keys[pygame.K_RIGHT]: move(0,1)
 
-        # Shadow follows delayed path
-        if len(player_path) > shadow_delay:
-            shadow_pos = list(player_path[-shadow_delay])
+        move_shadow()
 
-        # Recharge in light zones
-        for lz in light_zones:
-            if player_pos == lz:
-                energy = min(100, energy + 2)
+        if dash_cd>0: dash_cd-=1
+
+        # Portal teleport
+        for p in portals:
+            if player==p:
+                player[:] = random_cell()
 
         # Draw maze
         for i in range(ROWS):
             for j in range(COLS):
-                if maze[i][j] == 1:
-                    pygame.draw.rect(screen, GRAY,
-                                     (j * CELL_SIZE, i * CELL_SIZE, CELL_SIZE, CELL_SIZE))
+                if maze[i][j]==1:
+                    pygame.draw.rect(screen,GRAY,(j*CELL,i*CELL,CELL,CELL))
 
-        # Draw goal
-        pygame.draw.rect(screen, GREEN,
-                         (goal[1] * CELL_SIZE, goal[0] * CELL_SIZE, CELL_SIZE, CELL_SIZE))
+        # Draw portals
+        for p in portals:
+            pygame.draw.rect(screen,PURPLE,(p[1]*CELL,p[0]*CELL,CELL,CELL))
 
-        # Draw light zones
-        for lz in light_zones:
-            pygame.draw.rect(screen, YELLOW,
-                             (lz[1] * CELL_SIZE, lz[0] * CELL_SIZE, CELL_SIZE, CELL_SIZE))
+        pygame.draw.rect(screen,GREEN,(goal[1]*CELL,goal[0]*CELL,CELL,CELL))
+        pygame.draw.rect(screen,BLUE,(player[1]*CELL,player[0]*CELL,CELL,CELL))
+        pygame.draw.rect(screen,RED,(shadow[1]*CELL,shadow[0]*CELL,CELL,CELL))
 
-        # Draw player
-        pygame.draw.rect(screen, BLUE,
-                         (player_pos[1] * CELL_SIZE, player_pos[0] * CELL_SIZE, CELL_SIZE, CELL_SIZE))
+        # UI
+        draw_text(f"Level:{level}",10,10)
+        draw_text(f"Lives:{lives}",10,40)
+        draw_text(f"Score:{score}",10,70)
 
-        # Draw shadow
-        pygame.draw.rect(screen, RED,
-                         (shadow_pos[1] * CELL_SIZE, shadow_pos[0] * CELL_SIZE, CELL_SIZE, CELL_SIZE))
-
-        # Energy bar
-        pygame.draw.rect(screen, WHITE, (10, 10, 100, 10))
-        pygame.draw.rect(screen, BLUE, (10, 10, energy, 10))
-
-        # Level text
-        draw_text(f"Level: {level}", 450, 10)
-
-        # Lose condition
-        if player_pos == shadow_pos:
-            game_state = GAME_OVER
-
-        # Win level
-        if player_pos == goal:
-            level += 1
-            if level > max_level:
-                game_state = WIN
+        # Collision
+        if player==shadow:
+            lives-=1
+            if lives<=0:
+                save_highscore()
+                state=GAME_OVER
             else:
-                reset_level(level)
+                reset()
 
-    # -------- MENU --------
-    elif game_state == MENU:
-        draw_text("SHADOW ESCAPE", 160, 200)
-        draw_text("Press ENTER to Start", 130, 300)
+        # Win
+        if player==goal:
+            level+=1
+            score+=100
+            if level>max_level:
+                save_highscore()
+                state=WIN
+            else:
+                reset()
 
-    # -------- GAME OVER --------
-    elif game_state == GAME_OVER:
-        draw_text("GAME OVER", 200, 250)
-        draw_text("Press ENTER for Menu", 120, 320)
+    elif state==MENU:
+        draw_text("SHADOW ESCAPE PRO",150,200)
+        draw_text("Press ENTER",200,300)
+        draw_text(f"High Score:{highscore}",180,350)
 
-    # -------- FINAL WIN --------
-    elif game_state == WIN:
-        draw_text("YOU WON!", 220, 250)
-        draw_text("Press ENTER for Menu", 120, 320)
+    elif state==PAUSE:
+        draw_text("PAUSED",250,250)
+
+    elif state==GAME_OVER:
+        draw_text("GAME OVER",200,250)
+        draw_text("ENTER for menu",180,300)
+
+    elif state==WIN:
+        draw_text("YOU WON!",220,250)
+        draw_text("ENTER for menu",180,300)
 
     pygame.display.flip()
 

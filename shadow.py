@@ -11,7 +11,7 @@ CELL = 30
 ROWS, COLS = HEIGHT // CELL, WIDTH // CELL
 
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
-pygame.display.set_caption("Shadow Escape ULTRA")
+pygame.display.set_caption("Shadow Escape FINAL")
 
 clock = pygame.time.Clock()
 font = pygame.font.SysFont(None, 28)
@@ -25,7 +25,6 @@ GREEN = (80,255,120)
 GRAY = (60,60,60)
 YELLOW = (255,255,0)
 CYAN = (0,255,255)
-PURPLE = (180,80,255)
 
 # States
 MENU, PLAYING, GAME_OVER, WIN, PAUSE = 0,1,2,3,4
@@ -33,7 +32,6 @@ state = MENU
 
 level = 1
 max_level = 5
-lives = 3
 score = 0
 
 # High score
@@ -66,7 +64,7 @@ def random_cell():
 # -------- RESET --------
 def reset():
     global player, shadow, freezer, goal, maze
-    global energy, dash_cd, timer, powerups
+    global energy, dash_cd, timer, powerups, player_path
 
     maze = generate_level(level)
 
@@ -80,6 +78,7 @@ def reset():
     timer = 60 - level*5
 
     powerups = [random_cell() for _ in range(3)]
+    player_path = []
 
 reset()
 
@@ -127,7 +126,6 @@ def draw_text(t,x,y):
 
 # -------- LOOP --------
 running=True
-vision_radius = 4
 
 while running:
     clock.tick(10)
@@ -139,7 +137,7 @@ while running:
 
         if state==MENU and e.type==pygame.KEYDOWN:
             if e.key==pygame.K_RETURN:
-                level, lives, score = 1,3,0
+                level, score = 1,0
                 reset()
                 state=PLAYING
 
@@ -169,6 +167,8 @@ while running:
         if keys[pygame.K_LEFT]: move(0,-1)
         if keys[pygame.K_RIGHT]: move(0,1)
 
+        player_path.append(tuple(player))
+
         move_shadow()
         move_freezer()
 
@@ -177,8 +177,7 @@ while running:
         # Timer
         timer -= 0.1
         if timer <= 0:
-            lives -= 1
-            reset()
+            state = GAME_OVER
 
         # Powerups
         for p in powerups[:]:
@@ -186,17 +185,15 @@ while running:
                 energy = min(100, energy + 30)
                 powerups.remove(p)
 
-        # Freezer collision
+        # Freezer effect
         if player == freezer:
             pygame.time.delay(300)
 
-        # Fog of war
+        # ✅ FULL MAZE ALWAYS DRAWN
         for i in range(ROWS):
             for j in range(COLS):
-                dist = abs(i-player[0]) + abs(j-player[1])
-                if dist <= vision_radius:
-                    if maze[i][j]==1:
-                        pygame.draw.rect(screen,GRAY,(j*CELL,i*CELL,CELL,CELL))
+                if maze[i][j]==1:
+                    pygame.draw.rect(screen,GRAY,(j*CELL,i*CELL,CELL,CELL))
 
         # Draw objects
         pygame.draw.rect(screen,GREEN,(goal[1]*CELL,goal[0]*CELL,CELL,CELL))
@@ -207,54 +204,53 @@ while running:
         for p in powerups:
             pygame.draw.rect(screen,YELLOW,(p[1]*CELL,p[0]*CELL,CELL,CELL))
 
-        # Mini-map
-        mini = 4
-        for i in range(ROWS):
-            for j in range(COLS):
-                if maze[i][j]==1:
-                    pygame.draw.rect(screen,GRAY,(500+j*mini,50+i*mini,mini,mini))
-        pygame.draw.rect(screen,BLUE,(500+player[1]*mini,50+player[0]*mini,mini,mini))
-
         # UI
         draw_text(f"L:{level}",10,10)
-        draw_text(f"Life:{lives}",10,30)
-        draw_text(f"Score:{score}",10,50)
-        draw_text(f"Time:{int(timer)}",10,70)
+        draw_text(f"Score:{score}",10,30)
+        draw_text(f"Time:{int(timer)}",10,50)
 
-        # Lose
-        if player==shadow:
-            lives-=1
-            if lives<=0:
-                save_highscore()
-                state=GAME_OVER
-            else:
-                reset()
+        # Death
+        if player == shadow:
+            save_highscore()
+            state = GAME_OVER
 
         # Win
-        if player==goal:
-            level+=1
-            score+=100
-            if level>max_level:
+        if player == goal:
+            level += 1
+            score += 100
+            if level > max_level:
                 save_highscore()
-                state=WIN
+                state = WIN
             else:
                 reset()
 
     elif state==MENU:
-        draw_text("SHADOW ESCAPE ULTRA",120,200)
+        draw_text("SHADOW ESCAPE FINAL",110,200)
         draw_text("Press ENTER",200,260)
-        draw_text(f"High Score:{highscore}",180,320)
-
-    elif state==PAUSE:
-        draw_text("PAUSED",250,250)
+        draw_text(f"High Score:{highscore}",170,320)
 
     elif state==GAME_OVER:
+        for i in range(ROWS):
+            for j in range(COLS):
+                if maze[i][j]==1:
+                    pygame.draw.rect(screen,GRAY,(j*CELL,i*CELL,CELL,CELL))
+
+        for pos in player_path:
+            pygame.draw.rect(screen,(100,100,255),
+                             (pos[1]*CELL,pos[0]*CELL,CELL,CELL))
+
+        pygame.draw.rect(screen,BLUE,(player[1]*CELL,player[0]*CELL,CELL,CELL))
+        pygame.draw.rect(screen,RED,(shadow[1]*CELL,shadow[0]*CELL,CELL,CELL))
+
         draw_text("GAME OVER",200,250)
-        draw_text("ENTER for menu",170,300)
+        draw_text("Press ENTER",200,300)
 
     elif state==WIN:
         draw_text("YOU WON!",220,250)
-        draw_text("ENTER for menu",170,300)
+        draw_text("Press ENTER",200,300)
+
+    elif state==PAUSE:
+        draw_text("PAUSED",250,250)
 
     pygame.display.flip()
 

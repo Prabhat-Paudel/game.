@@ -114,7 +114,6 @@ def create_grid(size, remove):
             e = tk.Entry(grid_frame, width=3, font=('Arial', 18),
                          justify='center', validate="key", validatecommand=vcmd)
 
-            # 🎨 Bold borders
             padx = (4 if j % box_c == 0 else 1)
             pady = (4 if i % box_r == 0 else 1)
 
@@ -141,6 +140,7 @@ def check_solution():
     for i in range(size):
         for j in range(size):
             val = cells[i][j].get()
+
             if val == "" or int(val) != solution[i][j]:
                 cells[i][j].config(bg="lightcoral")
                 correct = False
@@ -153,20 +153,42 @@ def check_solution():
     else:
         messagebox.showerror("Result", "❌ Mistakes highlighted")
 
-# ---------- HINT ----------
-def give_hint():
+# ---------- SMART HINT ----------
+def smart_hint():
     size = current_size
-    empties = [(i,j) for i in range(size) for j in range(size)
-               if cells[i][j].get() == "" and cells[i][j]["state"] == "normal"]
+    box_r, box_c = get_box_size(size)
 
-    if not empties:
-        return
+    board = []
+    for i in range(size):
+        row = []
+        for j in range(size):
+            val = cells[i][j].get()
+            row.append(int(val) if val != "" else 0)
+        board.append(row)
 
-    i,j = random.choice(empties)
-    cells[i][j].insert(0, solution[i][j])
-    cells[i][j].config(bg="lightyellow")
+    for i in range(size):
+        for j in range(size):
+            if board[i][j] == 0:
+                possible = []
 
-# ---------- SHOW SOLUTION ----------
+                for num in range(1, size+1):
+                    if is_valid(board, i, j, num):
+                        possible.append(num)
+
+                if len(possible) == 1:
+                    num = possible[0]
+                    cells[i][j].insert(0, num)
+                    cells[i][j].config(bg="lightyellow")
+
+                    messagebox.showinfo(
+                        "Smart Hint 💡",
+                        f"Cell ({i+1},{j+1}) = {num}\nOnly possible number here."
+                    )
+                    return
+
+    messagebox.showinfo("Hint", "No simple hint found 😅")
+
+# ---------- FINAL ANSWER ----------
 def show_solution():
     size = current_size
     for i in range(size):
@@ -185,7 +207,7 @@ tk.Button(btn_frame, text="Medium", command=lambda: create_grid(6,14)).grid(row=
 tk.Button(btn_frame, text="Hard", command=lambda: create_grid(9,40)).grid(row=0,column=2,padx=5)
 
 tk.Button(root, text="Check", command=check_solution).pack(pady=3)
-tk.Button(root, text="Hint", command=give_hint).pack(pady=3)
+tk.Button(root, text="Smart Hint 💡", command=smart_hint).pack(pady=3)
 tk.Button(root, text="Final Answer", command=show_solution).pack(pady=3)
 tk.Button(root, text="New Game", command=lambda: create_grid(current_size, 6 if current_size==4 else 14 if current_size==6 else 40)).pack(pady=3)
 

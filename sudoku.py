@@ -6,9 +6,11 @@ import time
 
 root = tk.Tk()
 root.title("Sudoku Pro")
+root.geometry("700x800")
+root.configure(bg="#f5f5f5")
 
-grid_frame = tk.Frame(root)
-grid_frame.pack()
+grid_frame = tk.Frame(root, bg="#f5f5f5")
+grid_frame.pack(pady=10)
 
 cells = []
 solution = []
@@ -90,7 +92,7 @@ def validate_input(P):
         return True
     return False
 
-# ---------- CREATE GRID ----------
+# ---------- CREATE GRID (BIG UI) ----------
 def create_grid(size, remove):
     global cells, solution, current_size, start_time
 
@@ -111,17 +113,33 @@ def create_grid(size, remove):
     for i in range(size):
         row = []
         for j in range(size):
-            e = tk.Entry(grid_frame, width=3, font=('Arial', 18),
-                         justify='center', validate="key", validatecommand=vcmd)
+            e = tk.Entry(
+                grid_frame,
+                width=4,
+                font=('Arial', 22, 'bold'),
+                justify='center',
+                validate="key",
+                validatecommand=vcmd
+            )
 
-            padx = (4 if j % box_c == 0 else 1)
-            pady = (4 if i % box_r == 0 else 1)
+            # Thick borders
+            left = 4 if j % box_c == 0 else 1
+            top = 4 if i % box_r == 0 else 1
+            right = 4 if j == size - 1 else 1
+            bottom = 4 if i == size - 1 else 1
 
-            e.grid(row=i, column=j, padx=padx, pady=pady)
+            e.grid(
+                row=i,
+                column=j,
+                padx=(left, right),
+                pady=(top, bottom),
+                ipadx=10,
+                ipady=10
+            )
 
             if puzzle[i][j] != 0:
                 e.insert(0, puzzle[i][j])
-                e.config(state='disabled', disabledforeground="black", bg="#e0e0e0")
+                e.config(state='disabled', disabledforeground="black", bg="#dcdcdc")
 
             row.append(e)
         cells.append(row)
@@ -156,7 +174,6 @@ def check_solution():
 # ---------- SMART HINT ----------
 def smart_hint():
     size = current_size
-    box_r, box_c = get_box_size(size)
 
     board = []
     for i in range(size):
@@ -169,20 +186,16 @@ def smart_hint():
     for i in range(size):
         for j in range(size):
             if board[i][j] == 0:
-                possible = []
-
-                for num in range(1, size+1):
-                    if is_valid(board, i, j, num):
-                        possible.append(num)
+                possible = [n for n in range(1,size+1) if is_valid(board,i,j,n)]
 
                 if len(possible) == 1:
-                    num = possible[0]
-                    cells[i][j].insert(0, num)
+                    n = possible[0]
+                    cells[i][j].insert(0, n)
                     cells[i][j].config(bg="lightyellow")
 
                     messagebox.showinfo(
                         "Smart Hint 💡",
-                        f"Cell ({i+1},{j+1}) = {num}\nOnly possible number here."
+                        f"Cell ({i+1},{j+1}) must be {n}"
                     )
                     return
 
@@ -199,7 +212,7 @@ def show_solution():
             cells[i][j].config(bg="lightgreen")
 
 # ---------- BUTTONS ----------
-btn_frame = tk.Frame(root)
+btn_frame = tk.Frame(root, bg="#f5f5f5")
 btn_frame.pack(pady=10)
 
 tk.Button(btn_frame, text="Easy", command=lambda: create_grid(4,6)).grid(row=0,column=0,padx=5)
@@ -211,7 +224,7 @@ tk.Button(root, text="Smart Hint 💡", command=smart_hint).pack(pady=3)
 tk.Button(root, text="Final Answer", command=show_solution).pack(pady=3)
 tk.Button(root, text="New Game", command=lambda: create_grid(current_size, 6 if current_size==4 else 14 if current_size==6 else 40)).pack(pady=3)
 
-timer_label = tk.Label(root, text="⏱️ Time: 0s")
+timer_label = tk.Label(root, text="⏱️ Time: 0s", bg="#f5f5f5", font=("Arial", 12))
 timer_label.pack()
 
 # Start

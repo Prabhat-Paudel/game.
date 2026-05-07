@@ -7,35 +7,162 @@ import chess
 # =========================
 
 root = tk.Tk()
-root.title("Advanced Chess AI")
-root.geometry("640x760")
-root.resizable(False, False)
+
+root.title("Fullscreen Chess")
+
+# Fullscreen mode
+root.attributes("-fullscreen", True)
+
+# Exit fullscreen with ESC
+root.bind(
+    "<Escape>",
+    lambda event: root.attributes("-fullscreen", False)
+)
 
 # =========================
-# SETTINGS
+# SCREEN SIZE
 # =========================
 
-SIZE = 80
-game_mode = None
+screen_width = root.winfo_screenwidth()
+screen_height = root.winfo_screenheight()
+
+BOARD_SIZE = min(screen_width, screen_height - 180)
+
+SIZE = BOARD_SIZE // 8
+
+# =========================
+# TOP FRAME
+# =========================
+
+top_frame = tk.Frame(root)
+
+top_frame.pack(pady=10)
+
+# =========================
+# STATUS LABEL
+# =========================
+
+status_label = tk.Label(
+    top_frame,
+    text="Choose Mode",
+    font=("Arial", 20, "bold")
+)
+
+status_label.grid(
+    row=0,
+    column=0,
+    columnspan=6,
+    pady=10
+)
+
+# =========================
+# MODE MENU
+# =========================
+
+mode_var = tk.StringVar(value="MULTI")
+
+mode_label = tk.Label(
+    top_frame,
+    text="Mode:",
+    font=("Arial", 14, "bold")
+)
+
+mode_label.grid(row=1, column=0)
+
+mode_menu = tk.OptionMenu(
+    top_frame,
+    mode_var,
+    "MULTI",
+    "AI"
+)
+
+mode_menu.config(font=("Arial", 12))
+
+mode_menu.grid(
+    row=1,
+    column=1,
+    padx=10
+)
+
+# =========================
+# DIFFICULTY MENU
+# =========================
+
+difficulty_var = tk.StringVar(value="2")
+
+difficulty_label = tk.Label(
+    top_frame,
+    text="AI Difficulty:",
+    font=("Arial", 14, "bold")
+)
+
+difficulty_label.grid(row=1, column=2)
+
+difficulty_menu = tk.OptionMenu(
+    top_frame,
+    difficulty_var,
+    "1",
+    "2",
+    "3",
+    "4"
+)
+
+difficulty_menu.config(font=("Arial", 12))
+
+difficulty_menu.grid(
+    row=1,
+    column=3,
+    padx=10
+)
+
+# =========================
+# RESTART BUTTON
+# =========================
+
+restart_btn = tk.Button(
+    top_frame,
+    text="Restart Game",
+    font=("Arial", 14, "bold"),
+    bg="#444",
+    fg="white"
+)
+
+restart_btn.grid(
+    row=1,
+    column=4,
+    padx=15
+)
+
+# =========================
+# EXIT BUTTON
+# =========================
+
+exit_btn = tk.Button(
+    top_frame,
+    text="Exit",
+    font=("Arial", 14, "bold"),
+    bg="red",
+    fg="white",
+    command=root.destroy
+)
+
+exit_btn.grid(
+    row=1,
+    column=5,
+    padx=10
+)
+
+# =========================
+# CANVAS
+# =========================
 
 canvas = tk.Canvas(
     root,
-    width=640,
-    height=640
+    width=BOARD_SIZE,
+    height=BOARD_SIZE
 )
 
 canvas.pack()
-
-status_label = tk.Label(
-    root,
-    text="Choose Game Mode",
-    font=("Arial", 18, "bold")
-)
-
-status_label.pack(pady=10)
-
-menu_frame = tk.Frame(root)
-menu_frame.pack(pady=5)
 
 # =========================
 # CHESS BOARD
@@ -44,9 +171,10 @@ menu_frame.pack(pady=5)
 board = chess.Board()
 
 selected_square = None
+possible_moves = []
 
 # =========================
-# PIECES
+# CHESS PIECES
 # =========================
 
 pieces = {
@@ -114,7 +242,7 @@ def evaluate_board():
 # MINIMAX AI
 # =========================
 
-def minimax(depth, alpha, beta, maximizing_player):
+def minimax(depth, alpha, beta, maximizing):
 
     if depth == 0 or board.is_game_over():
 
@@ -122,11 +250,8 @@ def minimax(depth, alpha, beta, maximizing_player):
 
     legal_moves = list(board.legal_moves)
 
-    # =========================
     # MAX PLAYER
-    # =========================
-
-    if maximizing_player:
+    if maximizing:
 
         max_eval = -999999
 
@@ -152,10 +277,7 @@ def minimax(depth, alpha, beta, maximizing_player):
 
         return max_eval
 
-    # =========================
     # MIN PLAYER
-    # =========================
-
     else:
 
         min_eval = 999999
@@ -191,6 +313,8 @@ def ai_move():
     if board.is_game_over():
         return
 
+    depth = int(difficulty_var.get())
+
     best_move = None
     best_value = 999999
 
@@ -200,8 +324,8 @@ def ai_move():
 
         board.push(move)
 
-        board_value = minimax(
-            3,
+        value = minimax(
+            depth,
             -999999,
             999999,
             True
@@ -209,9 +333,9 @@ def ai_move():
 
         board.pop()
 
-        if board_value < best_value:
+        if value < best_value:
 
-            best_value = board_value
+            best_value = value
             best_move = move
 
     if best_move:
@@ -251,8 +375,8 @@ def draw_board():
 
             square = chess.square(col, 7 - row)
 
-            # Highlight selected piece
-            if selected_square == square:
+            # Selected square
+            if square == selected_square:
 
                 canvas.create_rectangle(
                     x1,
@@ -263,6 +387,17 @@ def draw_board():
                     width=4
                 )
 
+            # Possible moves
+            if square in possible_moves:
+
+                canvas.create_oval(
+                    x1 + SIZE // 3,
+                    y1 + SIZE // 3,
+                    x2 - SIZE // 3,
+                    y2 - SIZE // 3,
+                    fill="green"
+                )
+
             piece = board.piece_at(square)
 
             if piece:
@@ -271,13 +406,13 @@ def draw_board():
                     x1 + SIZE // 2,
                     y1 + SIZE // 2,
                     text=pieces[piece.symbol()],
-                    font=("Arial", 42)
+                    font=("Arial", SIZE // 2)
                 )
 
     update_status()
 
 # =========================
-# STATUS
+# UPDATE STATUS
 # =========================
 
 def update_status():
@@ -298,12 +433,7 @@ def update_status():
     elif board.is_stalemate():
 
         status_label.config(
-            text="Draw - Stalemate"
-        )
-
-        messagebox.showinfo(
-            "Draw",
-            "Stalemate!"
+            text="Stalemate!"
         )
 
     elif board.is_check():
@@ -311,17 +441,17 @@ def update_status():
         turn = "White" if board.turn else "Black"
 
         status_label.config(
-            text=f"{turn} is in CHECK!"
+            text=f"{turn} in CHECK!"
         )
 
     else:
 
         turn = "White" if board.turn else "Black"
 
-        if game_mode == "AI":
+        if mode_var.get() == "AI":
 
             status_label.config(
-                text=f"{turn} Turn (AI Mode)"
+                text=f"{turn} Turn (AI)"
             )
 
         else:
@@ -331,18 +461,35 @@ def update_status():
             )
 
 # =========================
+# POSSIBLE MOVES
+# =========================
+
+def get_possible_moves(square):
+
+    moves = []
+
+    for move in board.legal_moves:
+
+        if move.from_square == square:
+
+            moves.append(move.to_square)
+
+    return moves
+
+# =========================
 # CLICK EVENT
 # =========================
 
 def click(event):
 
     global selected_square
+    global possible_moves
 
     if board.is_game_over():
         return
 
     # AI controls black
-    if game_mode == "AI" and board.turn == chess.BLACK:
+    if mode_var.get() == "AI" and board.turn == chess.BLACK:
         return
 
     col = event.x // SIZE
@@ -360,15 +507,21 @@ def click(event):
 
         if piece:
 
-            if game_mode == "AI":
+            if mode_var.get() == "AI":
 
                 if piece.color == chess.WHITE:
+
                     selected_square = square
+
+                    possible_moves = get_possible_moves(square)
 
             else:
 
                 if piece.color == board.turn:
+
                     selected_square = square
+
+                    possible_moves = get_possible_moves(square)
 
     # =========================
     # MOVE PIECE
@@ -376,11 +529,13 @@ def click(event):
 
     else:
 
-        # Deselect same square
         if square == selected_square:
 
             selected_square = None
+            possible_moves = []
+
             draw_board()
+
             return
 
         move = chess.Move(
@@ -407,38 +562,21 @@ def click(event):
             board.push(move)
 
             selected_square = None
+            possible_moves = []
 
             draw_board()
 
             # AI TURN
-            if game_mode == "AI":
+            if mode_var.get() == "AI":
 
                 root.after(300, ai_move)
 
         else:
 
             selected_square = None
+            possible_moves = []
+
             draw_board()
-
-# =========================
-# START MODES
-# =========================
-
-def start_multiplayer():
-
-    global game_mode
-
-    game_mode = "MULTI"
-
-    restart_game()
-
-def start_ai():
-
-    global game_mode
-
-    game_mode = "AI"
-
-    restart_game()
 
 # =========================
 # RESTART GAME
@@ -448,59 +586,18 @@ def restart_game():
 
     global board
     global selected_square
+    global possible_moves
 
     board = chess.Board()
 
     selected_square = None
 
+    possible_moves = []
+
     draw_board()
 
-# =========================
-# BUTTONS
-# =========================
-
-multi_btn = tk.Button(
-    menu_frame,
-    text="Multiplayer",
-    font=("Arial", 14, "bold"),
-    bg="#4caf50",
-    fg="white",
-    width=14,
-    command=start_multiplayer
-)
-
-multi_btn.grid(
-    row=0,
-    column=0,
-    padx=10
-)
-
-ai_btn = tk.Button(
-    menu_frame,
-    text="AI Opponent",
-    font=("Arial", 14, "bold"),
-    bg="#2196f3",
-    fg="white",
-    width=14,
-    command=start_ai
-)
-
-ai_btn.grid(
-    row=0,
-    column=1,
-    padx=10
-)
-
-restart_btn = tk.Button(
-    root,
-    text="Restart Game",
-    font=("Arial", 16, "bold"),
-    bg="#444",
-    fg="white",
-    command=restart_game
-)
-
-restart_btn.pack(pady=10)
+# Connect restart button
+restart_btn.config(command=restart_game)
 
 # =========================
 # START

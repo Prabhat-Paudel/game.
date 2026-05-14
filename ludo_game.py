@@ -1,14 +1,13 @@
-
 from tkinter import *
 from tkinter import messagebox
 import random
 
-# =====================================
+# ==========================================
 # WINDOW
-# =====================================
+# ==========================================
 
 root = Tk()
-root.title("Advanced Ludo")
+root.title("Advanced Ludo Game")
 root.attributes("-fullscreen", True)
 
 root.bind(
@@ -16,19 +15,20 @@ root.bind(
     lambda e: root.attributes("-fullscreen", False)
 )
 
-# =====================================
-# SCREEN
-# =====================================
+# ==========================================
+# SCREEN SIZE
+# ==========================================
 
 screen_width = root.winfo_screenwidth()
 screen_height = root.winfo_screenheight()
 
-BOARD_SIZE = min(screen_width, screen_height - 170)
+BOARD_SIZE = min(screen_width, screen_height - 180)
+
 CELL = BOARD_SIZE // 15
 
-# =====================================
+# ==========================================
 # CANVAS
-# =====================================
+# ==========================================
 
 canvas = Canvas(
     root,
@@ -39,9 +39,9 @@ canvas = Canvas(
 
 canvas.pack()
 
-# =====================================
-# STATUS
-# =====================================
+# ==========================================
+# STATUS LABEL
+# ==========================================
 
 status_label = Label(
     root,
@@ -49,80 +49,51 @@ status_label = Label(
     font=("Arial", 22, "bold")
 )
 
-status_label.pack(pady=10)
+status_label.pack()
 
-# =====================================
+# ==========================================
+# DICE LABEL
+# ==========================================
+
+dice_label = Label(
+    root,
+    text="DICE : -",
+    font=("Arial", 24, "bold"),
+    fg="blue"
+)
+
+dice_label.pack(pady=5)
+
+# ==========================================
 # PLAYERS
-# =====================================
+# ==========================================
 
 players = ["red", "green", "yellow", "blue"]
 
 turn = 0
-
 dice_value = 0
+turn_count = 1
 
-# =====================================
-# PATH
-# =====================================
+# ==========================================
+# MAIN PATH
+# ==========================================
 
 path = [
-    (6, 13),
-    (6, 12),
-    (6, 11),
-    (6, 10),
-    (6, 9),
-    (5, 8),
-    (4, 8),
-    (3, 8),
-    (2, 8),
-    (1, 8),
-    (0, 8),
-    (0, 7),
-    (0, 6),
-    (1, 6),
-    (2, 6),
-    (3, 6),
-    (4, 6),
-    (5, 6),
-    (6, 5),
-    (6, 4),
-    (6, 3),
-    (6, 2),
-    (6, 1),
-    (6, 0),
-    (7, 0),
-    (8, 0),
-    (8, 1),
-    (8, 2),
-    (8, 3),
-    (8, 4),
-    (8, 5),
-    (9, 6),
-    (10, 6),
-    (11, 6),
-    (12, 6),
-    (13, 6),
-    (14, 6),
-    (14, 7),
-    (14, 8),
-    (13, 8),
-    (12, 8),
-    (11, 8),
-    (10, 8),
-    (9, 8),
-    (8, 9),
-    (8, 10),
-    (8, 11),
-    (8, 12),
-    (8, 13),
-    (8, 14),
-    (7, 14),
-    (6, 14)
+    (6,13),(6,12),(6,11),(6,10),(6,9),
+    (5,8),(4,8),(3,8),(2,8),(1,8),(0,8),
+    (0,7),(0,6),(1,6),(2,6),(3,6),(4,6),
+    (5,6),(6,5),(6,4),(6,3),(6,2),(6,1),
+    (6,0),(7,0),(8,0),(8,1),(8,2),(8,3),
+    (8,4),(8,5),(9,6),(10,6),(11,6),(12,6),
+    (13,6),(14,6),(14,7),(14,8),(13,8),
+    (12,8),(11,8),(10,8),(9,8),(8,9),
+    (8,10),(8,11),(8,12),(8,13),(8,14),
+    (7,14),(6,14)
 ]
 
-# =====================================
+# ==========================================
 # START INDEX
-# =====================================
+# ==========================================
 
 start_index = {
     "red": 0,
@@ -131,15 +102,15 @@ start_index = {
     "blue": 39
 }
 
-# =====================================
+# ==========================================
 # SAFE CELLS
-# =====================================
+# ==========================================
 
-safe_cells = [0, 8, 13, 21, 26, 34, 39, 47]
+safe_cells = [0,8,13,21,26,34,39,47]
 
-# =====================================
+# ==========================================
 # HOME POSITIONS
-# =====================================
+# ==========================================
 
 home_positions = {
     "red": [(2,2),(4,2),(2,4),(4,4)],
@@ -148,23 +119,12 @@ home_positions = {
     "blue": [(10,10),(12,10),(10,12),(12,12)]
 }
 
-# =====================================
-# WIN POSITION
-# =====================================
-
-WIN_POS = 56
-
-# =====================================
+# ==========================================
 # TOKENS
 # -1 = HOME
-# =====================================
+# ==========================================
 
-initial_tokens = {
-    "red": [-1,-1,-1,-1],
-    "green": [-1,-1,-1,-1],
-    "yellow": [-1,-1,-1,-1],
-    "blue": [-1,-1,-1,-1]
-}
+WIN_POS = 56
 
 tokens = {
     "red": [-1,-1,-1,-1],
@@ -173,26 +133,26 @@ tokens = {
     "blue": [-1,-1,-1,-1]
 }
 
-# =====================================
+# ==========================================
 # COLORS
-# =====================================
+# ==========================================
 
 home_colors = {
-    "red": "#ffb3b3",
-    "green": "#b3ffb3",
-    "yellow": "#ffffb3",
-    "blue": "#b3b3ff"
+    "red": "#ffcccc",
+    "green": "#ccffcc",
+    "yellow": "#ffffcc",
+    "blue": "#ccccff"
 }
 
-# =====================================
+# ==========================================
 # DRAW BOARD
-# =====================================
-
+# ==========================================
 
 def draw_board():
 
     canvas.delete("all")
 
+    # BOARD CELLS
     for row in range(15):
 
         for col in range(15):
@@ -218,10 +178,7 @@ def draw_board():
                 color = home_colors["blue"]
 
             canvas.create_rectangle(
-                x1,
-                y1,
-                x2,
-                y2,
+                x1, y1, x2, y2,
                 fill=color,
                 outline="black"
             )
@@ -241,26 +198,55 @@ def draw_board():
             fill_color = "lightgreen"
 
         canvas.create_rectangle(
-            x1,
-            y1,
-            x2,
-            y2,
+            x1, y1, x2, y2,
             fill=fill_color,
             outline="black"
         )
 
     # CENTER
-    canvas.create_oval(
-        6 * CELL,
-        6 * CELL,
-        9 * CELL,
-        9 * CELL,
+    canvas.create_polygon(
+        7*CELL,6*CELL,
+        9*CELL,7*CELL,
+        7*CELL,9*CELL,
+        6*CELL,7*CELL,
         fill="gold",
         outline="black",
         width=3
     )
 
-    # TOKENS
+    # CURRENT PLAYER HIGHLIGHT
+    current_player = players[turn]
+
+    if current_player == "red":
+        canvas.create_rectangle(
+            0,0,6*CELL,6*CELL,
+            outline="red",
+            width=6
+        )
+
+    elif current_player == "green":
+        canvas.create_rectangle(
+            9*CELL,0,15*CELL,6*CELL,
+            outline="green",
+            width=6
+        )
+
+    elif current_player == "yellow":
+        canvas.create_rectangle(
+            0,9*CELL,6*CELL,15*CELL,
+            outline="gold",
+            width=6
+        )
+
+    elif current_player == "blue":
+        canvas.create_rectangle(
+            9*CELL,9*CELL,15*CELL,
+            15*CELL,
+            outline="blue",
+            width=6
+        )
+
+    # DRAW TOKENS
     for color in players:
 
         for i, pos in enumerate(tokens[color]):
@@ -270,18 +256,18 @@ def draw_board():
 
                 x, y = home_positions[color][i]
 
-            # WIN
+            # FINISHED
             elif pos >= WIN_POS:
 
-                x, y = (7, 7)
+                x, y = (7,7)
 
             else:
 
-                path_index = (
+                index = (
                     start_index[color] + pos
                 ) % len(path)
 
-                x, y = path[path_index]
+                x, y = path[index]
 
             x1 = x * CELL + 10
             y1 = y * CELL + 10
@@ -290,44 +276,46 @@ def draw_board():
             y2 = y1 + CELL - 20
 
             canvas.create_oval(
-                x1,
-                y1,
-                x2,
-                y2,
+                x1, y1, x2, y2,
                 fill=color,
-                outline="black",
-                width=3
+                outline="gold"
+                if color == players[turn]
+                else "black",
+                width=5 if color == players[turn]
+                else 3
             )
 
             canvas.create_text(
-                (x1 + x2) // 2,
-                (y1 + y2) // 2,
-                text=str(i + 1),
-                font=("Arial", 14, "bold"),
+                (x1+x2)//2,
+                (y1+y2)//2,
+                text=str(i+1),
+                font=("Arial",14,"bold"),
                 fill="white"
             )
 
-# =====================================
+# ==========================================
 # NEXT TURN
-# =====================================
-
+# ==========================================
 
 def next_turn():
 
     global turn
+    global turn_count
 
     turn = (turn + 1) % 4
+
+    if turn == 0:
+        turn_count += 1
 
     current = players[turn]
 
     status_label.config(
-        text=f"{current.upper()} TURN"
+        text=f"TURN {turn_count} : {current.upper()}"
     )
 
-# =====================================
-# CHECK WIN
-# =====================================
-
+# ==========================================
+# CHECK WINNER
+# ==========================================
 
 def check_winner(player):
 
@@ -341,22 +329,24 @@ def check_winner(player):
     if finished == 4:
 
         messagebox.showinfo(
-            "Winner",
-            f"{player.upper()} WINS THE GAME!"
+            "WINNER",
+            f"{player.upper()} WINS!"
         )
 
         restart_game()
 
-# =====================================
+# ==========================================
 # ROLL DICE
-# =====================================
-
+# ==========================================
 
 def roll_dice():
 
     global dice_value
 
-    dice_value = random.randint(1, 6)
+    if dice_value != 0:
+        return
+
+    dice_value = random.randint(1,6)
 
     current = players[turn]
 
@@ -364,10 +354,13 @@ def roll_dice():
         text=f"{current.upper()} ROLLED {dice_value}"
     )
 
-# =====================================
-# MOVE TOKEN
-# =====================================
+    dice_label.config(
+        text=f"DICE : {dice_value}"
+    )
 
+# ==========================================
+# MOVE TOKEN
+# ==========================================
 
 def move_token(player, token_index):
 
@@ -385,7 +378,6 @@ def move_token(player, token_index):
             draw_board()
 
         else:
-
             return
 
     else:
@@ -394,23 +386,32 @@ def move_token(player, token_index):
         if current_pos + dice_value > WIN_POS:
             return
 
-        tokens[player][token_index] += dice_value
+        # ANIMATION
+        for step in range(dice_value):
+
+            root.update()
+
+            root.after(120)
+
+            tokens[player][token_index] += 1
+
+            draw_board()
 
         # FINISH
         if tokens[player][token_index] == WIN_POS:
 
             messagebox.showinfo(
-                "Finished",
-                f"{player.upper()} token finished!"
+                "FINISHED",
+                f"{player.upper()} TOKEN FINISHED!"
             )
 
-        # CURRENT INDEX
+        # CURRENT POSITION
         current_index = (
             start_index[player]
             + tokens[player][token_index]
         ) % len(path)
 
-        # KILL OPPONENTS
+        # KILL SYSTEM
         if current_index not in safe_cells:
 
             for enemy in players:
@@ -433,7 +434,7 @@ def move_token(player, token_index):
                         tokens[enemy][i] = -1
 
                         messagebox.showinfo(
-                            "Killed",
+                            "KILLED",
                             f"{player.upper()} killed {enemy.upper()} token"
                         )
 
@@ -445,12 +446,20 @@ def move_token(player, token_index):
     if dice_value != 6:
         next_turn()
 
-# =====================================
-# CLICK EVENT
-# =====================================
+    dice_value = 0
 
+    dice_label.config(
+        text="DICE : -"
+    )
+
+# ==========================================
+# CLICK EVENT
+# ==========================================
 
 def click(event):
+
+    if dice_value == 0:
+        return
 
     player = players[turn]
 
@@ -459,12 +468,13 @@ def click(event):
 
     for i, pos in enumerate(tokens[player]):
 
+        # HOME
         if pos == -1:
 
             tx, ty = home_positions[player][i]
 
+        # FINISHED
         elif pos >= WIN_POS:
-
             continue
 
         else:
@@ -481,16 +491,16 @@ def click(event):
 
             break
 
-# =====================================
-# RESTART
-# =====================================
-
+# ==========================================
+# RESTART GAME
+# ==========================================
 
 def restart_game():
 
     global tokens
     global turn
     global dice_value
+    global turn_count
 
     tokens = {
         "red": [-1,-1,-1,-1],
@@ -501,6 +511,7 @@ def restart_game():
 
     turn = 0
     dice_value = 0
+    turn_count = 1
 
     draw_board()
 
@@ -508,9 +519,13 @@ def restart_game():
         text="RED TURN"
     )
 
-# =====================================
+    dice_label.config(
+        text="DICE : -"
+    )
+
+# ==========================================
 # BUTTONS
-# =====================================
+# ==========================================
 
 button_frame = Frame(root)
 button_frame.pack(pady=10)
@@ -518,39 +533,42 @@ button_frame.pack(pady=10)
 roll_button = Button(
     button_frame,
     text="ROLL DICE",
-    font=("Arial", 20, "bold"),
+    font=("Arial",20,"bold"),
     bg="orange",
     fg="white",
+    width=12,
     command=roll_dice
 )
 
-roll_button.grid(row=0, column=0, padx=10)
+roll_button.grid(row=0,column=0,padx=10)
 
 restart_button = Button(
     button_frame,
     text="RESTART",
-    font=("Arial", 20, "bold"),
+    font=("Arial",20,"bold"),
     bg="green",
     fg="white",
+    width=12,
     command=restart_game
 )
 
-restart_button.grid(row=0, column=1, padx=10)
+restart_button.grid(row=0,column=1,padx=10)
 
 exit_button = Button(
     button_frame,
     text="EXIT",
-    font=("Arial", 20, "bold"),
+    font=("Arial",20,"bold"),
     bg="red",
     fg="white",
+    width=12,
     command=root.destroy
 )
 
-exit_button.grid(row=0, column=2, padx=10)
+exit_button.grid(row=0,column=2,padx=10)
 
-# =====================================
-# START
-# =====================================
+# ==========================================
+# START GAME
+# ==========================================
 
 draw_board()
 
